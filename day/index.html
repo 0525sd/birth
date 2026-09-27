@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>郭郭，21岁生日快乐！</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { overflow: hidden; background: #e6e6fa; /* 浅紫色背景 */ transition: background 1s; }
+
+        /* 开场烟花遮罩层 */
+        #fireworks-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 9999; pointer-events: none;
+            background: #e6e6fa; opacity: 1; transition: opacity 1.5s ease;
+        }
+        canvas { display: block; }
+
+        /* 通用屏幕样式 */
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .screen.active { display: flex; }
+
+        /* 按钮样式 */
+        .btn { margin-top: 30px; padding: 15px 35px; font-size: 18px; font-weight: bold; border: none; border-radius: 30px; background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); color: white; cursor: pointer; box-shadow: 0 4px 15px rgba(161, 140, 209, 0.4); transition: all 0.3s ease; z-index: 50; }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(161, 140, 209, 0.6); }
+        .btn-secondary { background: #b0bec5; box-shadow: 0 4px 15px rgba(176, 190, 197, 0.4); }
+
+        /* 1. 祝福文字 */
+        .blessing { font-size: 28px; line-height: 2; max-width: 800px; font-family: 'KaiTi', '楷体', serif; color: #4a148c; background: rgba(255, 255, 255, 0.85); padding: 50px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); animation: fadeIn 2s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 2. 蛋糕与蜡烛 */
+        .cake-container { display: flex; flex-direction: column; align-items: center; }
+        .cake { position: relative; width: 300px; height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 20px; }
+        .layer { width: 100%; border-radius: 15px; background: linear-gradient(to bottom, #fff0f5, #ffccd5); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 2px solid #ffb6c1; }
+        .layer1 { height: 70px; width: 180px; z-index: 3; }
+        .layer2 { height: 70px; width: 240px; z-index: 2; }
+        .layer3 { height: 90px; width: 300px; z-index: 1; }
+        .candles { position: absolute; top: -10px; display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; width: 180px; z-index: 4; }
+        .candle { width: 8px; height: 35px; background: repeating-linear-gradient(45deg, #fff, #fff 4px, #ffb6c1 4px, #ffb6c1 8px); border-radius: 3px; position: relative; }
+        .candle::after { content: ''; position: absolute; top: -8px; left: -4px; width: 16px; height: 16px; background: radial-gradient(circle, #ffeb3b, #ff9800, transparent); border-radius: 50%; animation: flicker 0.4s infinite alternate; }
+        @keyframes flicker { from { transform: scale(0.8); opacity: 0.8; } to { transform: scale(1.1); opacity: 1; } }
+        .candle.blown { filter: grayscale(1); opacity: 0.5; }
+        .candle.blown::after { display: none; }
+
+        /* 3. 照片墙 */
+        #photo-wall-screen { background: #f3e5f5; }
+        #photo-wall { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+        #video { position: absolute; right: 20px; bottom: 20px; width: 200px; height: 150px; border-radius: 10px; border: 3px solid white; z-index: 10; transform: scaleX(-1); box-shadow: 0 4px 15px rgba(0,0,0,0.2); object-fit: cover; }
+        .polaroid { position: absolute; width: 110px; height: 150px; background: white; padding: 6px 6px 16px 6px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: all 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); border-radius: 5px; }
+        .polaroid img { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; background: #ddd; }
+        .hint-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.9); padding: 12px 24px; border-radius: 30px; z-index: 20; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 16px; color: #6a1b9a; }
+
+        /* 4. 收集星星小游戏 */
+        #game-screen { background: linear-gradient(to bottom, #1a1a2e, #16213e); color: white; }
+        #stars { font-size: 40px; margin-bottom: 20px; color: #f9d71c; text-shadow: 0 0 10px rgba(249, 215, 28, 0.5); }
+        #game-area { position: relative; width: 80vw; height: 55vh; border: 2px dashed rgba(255,255,255,0.2); border-radius: 15px; margin: 0 auto; background: rgba(255,255,255,0.05); }
+        .star { position: absolute; font-size: 35px; cursor: pointer; color: #f9d71c; user-select: none; animation: float 2s infinite; text-shadow: 0 0 15px rgba(249, 215, 28, 0.8); transition: transform 0.2s; }
+        .star:active { transform: scale(0.8); }
+        @keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
+        #progress { position: absolute; bottom: 30px; width: 60%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 5px; overflow: hidden; }
+        #progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #f9d71c, #ff9800); border-radius: 5px; transition: width 0.3s; }
+
+        /* 5. 视频播放 */
+        #video-screen { background: black; }
+        #local-video { max-width: 80vw; max-height: 80vh; border-radius: 20px; box-shadow: 0 0 40px rgba(255,255,255,0.3); }
+
+        /* 6. 隐藏信件 */
+        #letter-screen { background: #e6e6fa; }
+        .letter-prompt { font-size: 32px; color: #4a148c; font-weight: bold; margin-bottom: 30px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .letter-content { display: none; font-size: 20px; line-height: 2; max-width: 700px; text-align: left; font-family: 'KaiTi', '楷体', serif; color: #333; background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-top: 20px; max-height: 70vh; overflow-y: auto; }
+        .letter-content p { text-indent: 2em; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<!-- 开场烟花 -->
+<div id="fireworks-container"><canvas id="fireworks-canvas"></canvas></div>
+
+<!-- 1. 生日祝福 -->
+<div class="screen active" id="screen-1">
+    <div class="blessing">
+        祝你有良好的睡眠，<br>
+        健康的身体，<br>
+        前进的勇气，<br>
+        以及万事都平淡的心境。<br><br>
+        <b>祝你快乐，不止生日。</b>
+    </div>
+    <button class="btn" onclick="nextScreen(1)">进入许愿环节</button>
+</div>
+
+<!-- 2. 吹蜡烛许愿 -->
+<div class="screen" id="screen-2">
+    <h2 style="color: #4a148c; margin-bottom: 20px;">许个愿吧 ✨</h2>
+    <div class="cake">
+        <div class="candles" id="candles-container"></div>
+        <div class="layer layer1"></div>
+        <div class="layer layer2"></div>
+        <div class="layer layer3"></div>
+    </div>
+    <button class="btn" onclick="extinguishCandles()">我许完愿啦，吹蜡烛</button>
+    <button class="btn btn-secondary" style="margin-top: 10px;" onclick="nextScreen(2)">跳过（去下一项）</button>
+</div>
+
+<!-- 3. 爱心照片墙 -->
+<div class="screen" id="photo-wall-screen">
+    <div id="photo-wall"></div>
+    <video id="video" autoplay playsinline></video>
+    <div class="hint-box">
+        ✋ 手掌张开 -> 照片平铺 &nbsp;|&nbsp; ✊ 握拳/闭合 -> 组成爱心
+    </div>
+    <button class="btn" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 20;" onclick="nextScreen(3)">回忆结束，去玩小游戏</button>
+</div>
+
+<!-- 4. 收集星星小游戏 -->
+<div class="screen" id="game-screen">
+    <h1 style="color: #f9d71c; text-shadow: 0 0 20px rgba(249, 215, 28, 0.5);">收集星星开启惊喜</h1>
+    <div id="stars">0 / 21</div>
+    <div id="game-area"></div>
+    <div id="progress"><div id="progress-bar"></div></div>
+    <br>
+    <button class="btn" style="background: #455a64; margin-top: 20px;" onclick="nextScreen(4)">跳过小游戏（测试用）</button>
+</div>
+
+<!-- 5. 视频播放 -->
+<div class="screen" id="video-screen">
+    <video id="local-video" controls autoplay>
+        <!-- 请将视频命名为 guorouxin.mp4 放在同一目录下 -->
+        <source src="guorouxin.mp4" type="video/mp4">
+        您的浏览器不支持视频标签。
+    </video>
+    <button class="btn" style="margin-top: 20px;" onclick="nextScreen(5)">观看完毕，去下一站</button>
+</div>
+
+<!-- 6. 隐藏信件 -->
+<div class="screen" id="letter-screen">
+    <div id="letter-prompt-text" class="letter-prompt">你不会觉得完了吧！<br>其实还有一封给你的信。</div>
+    <button class="btn" id="letter-btn" onclick="showLetter()">点击查看信件</button>
+    <div class="letter-content" id="letter-content">
+        <p>亲爱的郭郭：</p>
+        <p>展信佳。21岁生日快乐呀。今年给你信的方式好像有点特别，居然是通过一个网站。我感觉我的脑子都要生锈了。每次都感觉呀好多话想跟你说，但是好像该说的早就说了！谢谢你一直在我身边。再过几个月，我也要迈入社会了呀。可能在一年前，说起我们的变化。我还会嘴硬“我感觉我们还是我们，从来都没有变”其实变化都很大啦。我现在对未来超级迷茫，我知道你也是，纠结于工作和成人高考的事。我们害怕自己选择错误，可是身边又没有人做我们的避风港。但是我们不要害怕啦，我们还年轻，一步一个脚印，一起走下去吧。我就不长篇大论了，我们继续一起成长吧，成长的路上有你陪着，我真的很开心。我们一起携手走下去吧。</p>
+    </div>
+</div>
+
+<script>
+    // ===== 配置区域 =====
+    // 把你照片文件夹里的照片名字写在这里，确保名字和大小写完全一致
+    const photoWallImages = [
+        "./photos/1.jpg",
+        "./photos/2.jpg",
+        "./photos/3.jpg",
+        "./photos/4.jpg",
+        "./photos/5.jpg",
+        "./photos/6.jpg",
+        "./photos/7.jpg",
+        "./photos/8.jpg",
+        "./photos/9.jpg",
+        "./photos/10.jpg",
+        "./photos/11.jpg",
+        "./photos/12.jpg",
+        "./photos/13.jpg",
+        "./photos/14.jpg",
+        "./photos/15.jpg",
+        "./photos/16.jpg",
+        "./photos/17.jpg",
+        "./photos/18.jpg",
+        "./photos/19.jpg",
+        "./photos/20.jpg"
+    ];
+
+    // 过滤掉可能存在的空字符串或无效路径，防止出现纯白照片
+    const validImages = photoWallImages.filter(src => src && src.trim() !== '');
+
+    // 占位图（建议最好换成你自己的本地图片，例如 "./photos/default.jpg" 防止网络不通）
+    const defaultPlaceholder = "https://picx.zhimg.com/v2-8b4c34e58d3e85a9e011b5446a17f96a_r.jpg";
+    const finalImages = validImages.length > 0 ? validImages : [defaultPlaceholder];
+    
+    // 计算需要展示的照片数量，直接使用你的实际照片数量
+    const heartPhotos = [];
+    for (let i = 0; i < finalImages.length; i++) {
+        heartPhotos.push(finalImages[i]);
+    }
+
+    // ===== 初始化 =====
+    let currentScreen = 0;
+    let starsCollected = 0;
+    let candlesBlown = false;
+
+    // ===== 1. 开场烟花特效 =====
+    window.onload = () => {
+        initFireworks();
+        setTimeout(() => {
+            document.getElementById('fireworks-container').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('fireworks-container').style.display = 'none';
+            }, 1500);
+        }, 5000); // 5秒后淡出
+    };
+
+    const canvas = document.getElementById('fireworks-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let fireworksInterval;
+
+    function initFireworks() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        fireworksInterval = setInterval(() => {
+            if (document.getElementById('fireworks-container').style.display === 'none') {
+                clearInterval(fireworksInterval);
+                return;
+            }
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height * 0.6;
+            const color = `hsl(${Math.random() * 360}, 80%, 60%)`;
+            const particleCount = 25 + Math.random() * 15;
+            for(let i=0; i<particleCount; i++) {
+                particles.push({
+                    x, y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5,
+                    life: 1, color, size: Math.random() * 2 + 1
+                });
+            }
+        }, 400);
+        animateFireworks();
+    }
+
+    function animateFireworks() {
+        ctx.clearRect(0,0,canvas.width, canvas.height);
+        particles = particles.filter(p => p.life > 0);
+        particles.forEach(p => {
+            p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life -= 0.015;
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+            ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+        requestAnimationFrame(animateFireworks);
+    }
+
+    // ===== 页面切换逻辑 =====
+    function nextScreen(current) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        let nextId = '';
+        if (current === 1) nextId = 'screen-2';
+        else if (current === 2) nextId = 'photo-wall-screen';
+        else if (current === 3) nextId = 'game-screen';
+        else if (current === 4) nextId = 'video-screen';
+        else if (current === 5) nextId = 'letter-screen';
+        
+        const next = document.getElementById(nextId);
+        if (next) next.classList.add('active');
+        
+        if (current === 1) initCandles();
+        if (current === 2) initPhotoWall();
+        if (current === 3) initGame();
+    }
+
+    // ===== 2. 蜡烛生成与吹灭 =====
+    function initCandles() {
+        const candlesContainer = document.getElementById('candles-container');
+        if (candlesContainer.children.length > 0) return;
+        candlesContainer.innerHTML = '';
+        for(let i=0; i<21; i++) {
+            let candle = document.createElement('div');
+            candle.className = 'candle';
+            candlesContainer.appendChild(candle);
+        }
+        candlesBlown = false;
+    }
+
+    function extinguishCandles() {
+        if (candlesBlown) return;
+        candlesBlown = true;
+        document.querySelectorAll('.candle').forEach(c => c.classList.add('blown'));
+        setTimeout(() => nextScreen(2), 1200);
+    }
+
+    // ===== 3. 照片墙与手势识别 =====
+    function initPhotoWall() {
+        const wall = document.getElementById('photo-wall');
+        wall.innerHTML = '';
+        heartPhotos.forEach((src, i) => {
+            let div = document.createElement('div');
+            div.className = 'polaroid';
+            // 在 onerror 里设置一个本地兜底，避免显示破图或空白
+            div.innerHTML = `<img src="${src}" alt="回忆" onerror="this.style.display='none'; this.parentElement.style.background='#eee';">`;
+            div.style.left = '50%';
+            div.style.top = '50%';
+            div.style.transform = 'translate(-50%, -50%)';
+            div.dataset.index = i;
+            wall.appendChild(div);
+        });
+        
+        startCamera();
+        
+        // 初始状态平铺
+        setTimeout(() => {
+            spreadPhotos(true);
+        }, 500);
+    }
+
+    // 修改散开逻辑：网格平铺
+    function spreadPhotos(spread) {
+        const photos = document.querySelectorAll('.polaroid');
+        const total = photos.length;
+        
+        photos.forEach((photo, i) => {
+            let x, y, rot;
+            if (spread) {
+                // === 核心修改：平铺算法 ===
+                // 设定每行放 5 张照片
+                const cols = 5; 
+                const rows = Math.ceil(total / cols);
+                
+                // 计算每个格子的宽高（这里预留了 150px 的上下左右边距，防止贴边）
+                const cellWidth = (window.innerWidth - 150) / cols;
+                const cellHeight = (window.innerHeight - 150) / rows;
+                
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                
+                // 计算中心点
+                x = 75 + col * cellWidth + cellWidth / 2;
+                y = 75 + row * cellHeight + cellHeight / 2;
+                
+                // 添加一点点随机偏移和旋转，看起来更自然，但不会重叠
+                x += (Math.random() - 0.5) * 20;
+                y += (Math.random() - 0.5) * 20;
+                rot = (Math.random() * 20 - 10);
+                photo.style.zIndex = 10;
+            } else {
+                // 组成爱心 (数学公式拟合)
+                const t = Math.PI * 2 * (i / total);
+                const hx = 16 * Math.pow(Math.sin(t), 3);
+                const hy = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+                const scale = 12;
+                x = window.innerWidth / 2 + hx * scale;
+                y = window.innerHeight / 2 - hy * scale;
+                rot = 0; 
+                photo.style.zIndex = 5;
+            }
+            photo.style.left = `${x}px`;
+            photo.style.top = `${y}px`;
+            photo.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
+        });
+    }
+
+    // 摄像头手势识别
+    let videoStream;
+    async function startCamera() {
+        const videoElement = document.getElementById('video');
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            videoElement.srcObject = videoStream;
+            videoElement.play();
+            analyzeHand();
+        } catch (err) {
+            console.log("无法访问摄像头", err);
+            const hintBox = document.querySelector('.hint-box');
+            if (hintBox) {
+                hintBox.innerHTML = '无法访问摄像头，请手动点击切换：<br><button onclick="spreadPhotos(true)" style="margin:5px;padding:5px 10px;border-radius:5px;border:none;background:#a18cd1;color:white;cursor:pointer;">平铺</button> <button onclick="spreadPhotos(false)" style="margin:5px;padding:5px 10px;border-radius:5px;border:none;background:#a18cd1;color:white;cursor:pointer;">爱心</button>';
+            }
+        }
+    }
+
+    function analyzeHand() {
+        const video = document.getElementById('video');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        let lastArea = 0;
+        let lastState = null;
+
+        setInterval(() => {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                let skinPixels = 0;
+                const totalPixels = canvas.width * canvas.height;
+                
+                for (let i = 0; i < imageData.length; i += 4) {
+                    const r = imageData[i];
+                    const g = imageData[i+1];
+                    const b = imageData[i+2];
+                    if (r > 95 && g > 40 && b > 20 && 
+                        Math.max(r, g, b) - Math.min(r, g, b) > 15 && 
+                        Math.abs(r - g) > 15 && r > g && r > b) {
+                        skinPixels++;
+                    }
+                }
+                
+                const skinRatio = skinPixels / totalPixels;
+                let isOpen = skinRatio > 0.15;
+                
+                if (Math.abs(skinRatio - lastArea) > 0.03 || (lastState !== null && lastState !== isOpen)) {
+                    if (isOpen !== lastState) {
+                        spreadPhotos(isOpen);
+                        lastState = isOpen;
+                    }
+                }
+                lastArea = skinRatio;
+            }
+        }, 300);
+    }
+
+    // ===== 4. 星星收集小游戏 =====
+    function initGame() {
+        const gameArea = document.getElementById('game-area');
+        gameArea.innerHTML = '';
+        starsCollected = 0;
+        updateScore();
+        
+        for (let i = 0; i < 21; i++) {
+            let star = document.createElement('div');
+            star.className = 'star';
+            star.innerText = '⭐';
+            star.style.left = `${Math.random() * 90}%`;
+            star.style.top = `${Math.random() * 85}%`;
+            star.onclick = function() {
+                if (this.style.display === 'none') return;
+                this.style.display = 'none';
+                starsCollected++;
+                updateScore();
+                if (starsCollected === 21) {
+                    setTimeout(() => nextScreen(4), 800);
+                }
+            };
+            gameArea.appendChild(star);
+        }
+    }
+
+    function updateScore() {
+        document.getElementById('stars').innerText = `${starsCollected} / 21`;
+        document.getElementById('progress-bar').style.width = `${(starsCollected/21)*100}%`;
+    }
+
+    // ===== 6. 信件展示 =====
+    function showLetter() {
+        document.getElementById('letter-prompt-text').style.display = 'none';
+        document.getElementById('letter-btn').style.display = 'none';
+        document.getElementById('letter-content').style.display = 'block';
+    }
+</script>
+</body>
+</html>
